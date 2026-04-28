@@ -10,9 +10,17 @@ export type MarkdownMessage = {
   metadata: Record<Guid, ComponentMetadata>;
 };
 
+/**
+ * Emitted by `MessageRendererComponent` whenever a dynamically mounted component fires an output.
+ * Use `componentType` + `outputName` to route the event, and `guid` to identify the specific instance.
+ */
 export type ComponentEvent = {
+  /** The GUID of the placeholder in the markdown — identifies which instance fired. */
   guid: Guid;
-  type: string;
-  name: string;
-  payload: unknown;
+  /** The component class name, e.g. `"TaskCardComponent"`. */
+  componentType: string;
+  /** The `@Output()` property name on the component, e.g. `"taskIdClicked"`. */
+  outputName: string;
+  /** The value emitted by the `EventEmitter`, e.g. a task ID string or a full task object. */
+  outputData: unknown;
 };

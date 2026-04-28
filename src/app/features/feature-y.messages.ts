@@ -2,7 +2,7 @@ import type { MarkdownMessage } from '../markdown-message';
 
 export const MOCK_FEATURE_Y_EXTRA_MESSAGE: MarkdownMessage = {
   content:
-    'New assignment: {55555555-5555-5555-5555-555555555555}',
+    '**New assignment**: {55555555-5555-5555-5555-555555555555}**New assignment**{11111111-1111-1111-1111-111111111112}**New assignment**',
   metadata: {
     '55555555-5555-5555-5555-555555555555': {
       type: 'TaskCardComponent',
@@ -10,6 +10,15 @@ export const MOCK_FEATURE_Y_EXTRA_MESSAGE: MarkdownMessage = {
         taskId: 'Y-005',
         title: 'Review Q2 budget proposal',
         dueDate: '2026-05-07',
+        assignee: 'finance@example.com',
+      },
+    },
+    '11111111-1111-1111-1111-111111111112': {
+      type: 'TaskCardComponent',
+      inputs: {
+        taskId: 'Y-0011',
+        title: 'Approve PO #4421',
+        dueDate: '2026-04-31',
         assignee: 'finance@example.com',
       },
     },
