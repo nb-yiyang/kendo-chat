@@ -1,18 +1,18 @@
 export type Guid = `${string}-${string}-${string}-${string}-${string}`;
 
-export interface ComponentMetadata {
+export type ComponentMetadata = {
   type: string;
   inputs: Record<string, unknown>;
-}
+};
 
-export interface MarkdownMessage {
+export type MarkdownMessage = {
   content: string;
   metadata: Record<Guid, ComponentMetadata>;
-}
+};
 
-export interface ComponentEvent {
+export type ComponentEvent = {
   guid: Guid;
   type: string;
   name: string;
   payload: unknown;
-}
+};
