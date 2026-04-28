@@ -10,7 +10,7 @@ import { CodeBlockComponent } from '../messages/components/code-block.component'
 import { ProductCardComponent } from '../messages/components/product-card.component';
 import { RevenueChartComponent } from '../messages/components/revenue-chart.component';
 import { TaskCardComponent } from '../messages/components/task-card.component';
-import { featureXMessages } from './feature-x.messages';
+import { MOCK_FEATURE_X_MESSAGES } from './feature-x.messages';
 
 type ChatMessage = Message & { _md: MarkdownMessage };
 
@@ -48,23 +48,41 @@ type ChatMessage = Message & { _md: MarkdownMessage };
       </kendo-chat>
     </section>
   `,
-  styles: [`
-    :host { display: block; height: 100%; }
-    .feature { display: flex; flex-direction: column; gap: 8px; height: 100%; }
-    .feature__head h2 { margin: 0; font-size: 16px; font-weight: 600; }
-    .feature__hint { margin: 2px 0 0; font-size: 12px; color: #64748b; }
-  `],
+  styles: [
+    `
+      :host {
+        display: block;
+        height: 100%;
+      }
+      .feature {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: 100%;
+      }
+      .feature__head h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .feature__hint {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: #64748b;
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FeatureXComponent {
   protected readonly user: User = { id: 1, name: 'You' };
   protected readonly bot: User = { id: 2, name: 'X-Assistant' };
 
-  protected readonly messages: ChatMessage[] = featureXMessages.map((m, i) => ({
+  protected readonly messages: ChatMessage[] = MOCK_FEATURE_X_MESSAGES.map((m, i) => ({
     id: `x-${i}`,
     author: this.bot,
     text: m.content,
-    timestamp: new Date(Date.now() - (featureXMessages.length - i) * 60_000),
+    timestamp: new Date(Date.now() - (MOCK_FEATURE_X_MESSAGES.length - i) * 60_000),
     _md: m,
   }));
 

@@ -1,6 +1,22 @@
 import type { MarkdownMessage } from '../markdown-message';
 
-export const featureYMessages: MarkdownMessage[] = [
+export const MOCK_FEATURE_Y_EXTRA_MESSAGE: MarkdownMessage = {
+  content:
+    'New assignment: {55555555-5555-5555-5555-555555555555}',
+  metadata: {
+    '55555555-5555-5555-5555-555555555555': {
+      type: 'TaskCardComponent',
+      inputs: {
+        taskId: 'Y-005',
+        title: 'Review Q2 budget proposal',
+        dueDate: '2026-05-07',
+        assignee: 'finance@example.com',
+      },
+    },
+  },
+};
+
+export const MOCK_FEATURE_Y_MESSAGES: MarkdownMessage[] = [
   {
     content:
       "**Today's tasks**\n\n" +

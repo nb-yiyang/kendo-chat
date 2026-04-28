@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ChatModule, type Message, type User } from '@progress/kendo-angular-conversational-ui';
 import {
   MessageRendererComponent,
@@ -7,7 +7,7 @@ import {
   type MarkdownMessage,
 } from '../markdown-message';
 import { TaskCardComponent } from '../messages/components/task-card.component';
-import { featureYMessages } from './feature-y.messages';
+import { MOCK_FEATURE_Y_MESSAGES, MOCK_FEATURE_Y_EXTRA_MESSAGE } from './feature-y.messages';
 
 type ChatMessage = Message & { _md: MarkdownMessage };
 
@@ -28,7 +28,7 @@ type ChatMessage = Message & { _md: MarkdownMessage };
       </header>
       <kendo-chat
         messageWidthMode="full"
-        [messages]="messages"
+        [messages]="messages()"
         [authorId]="user.id"
         [height]="640"
         [width]="'100%'"
@@ -40,27 +40,69 @@ type ChatMessage = Message & { _md: MarkdownMessage };
           />
         </ng-template>
       </kendo-chat>
+      <button class="feature__load-btn" (click)="loadNextMessage()">
+        Simulate server push
+      </button>
     </section>
   `,
-  styles: [`
-    :host { display: block; height: 100%; }
-    .feature { display: flex; flex-direction: column; gap: 8px; height: 100%; }
-    .feature__head h2 { margin: 0; font-size: 16px; font-weight: 600; }
-    .feature__hint { margin: 2px 0 0; font-size: 12px; color: #64748b; }
-  `],
+  styles: [
+    `
+      :host {
+        display: block;
+        height: 100%;
+      }
+      .feature {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: 100%;
+      }
+      .feature__head h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .feature__hint {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: #64748b;
+      }
+      .feature__load-btn {
+        padding: 4px 12px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FeatureYComponent {
   protected readonly user: User = { id: 1, name: 'You' };
   protected readonly bot: User = { id: 2, name: 'Y-Assistant' };
 
-  protected readonly messages: ChatMessage[] = featureYMessages.map((m, i) => ({
-    id: `y-${i}`,
-    author: this.bot,
-    text: m.content,
-    timestamp: new Date(Date.now() - (featureYMessages.length - i) * 60_000),
-    _md: m,
-  }));
+  protected readonly messages = signal<ChatMessage[]>(
+    MOCK_FEATURE_Y_MESSAGES.map((m, i) => ({
+      id: `y-${i}`,
+      author: this.bot,
+      text: m.content,
+      timestamp: new Date(Date.now() - (MOCK_FEATURE_Y_MESSAGES.length - i) * 60_000),
+      _md: m,
+    }))
+  );
+
+  protected loadNextMessage(): void {
+    const m = MOCK_FEATURE_Y_EXTRA_MESSAGE;
+    this.messages.update(current => [
+      ...current,
+      {
+        id: `y-${current.length}`,
+        author: this.bot,
+        text: m.content,
+        timestamp: new Date(),
+        _md: m,
+      },
+    ]);
+  }
 
   protected onComponentEvent(e: ComponentEvent): void {
     console.log('[FeatureY]', e);

@@ -1,6 +1,6 @@
 import type { MarkdownMessage } from '../markdown-message';
 
-export const featureXMessages: MarkdownMessage[] = [
+export const MOCK_FEATURE_X_MESSAGES: MarkdownMessage[] = [
   // 1. Plain markdown, no components
   {
     content:
