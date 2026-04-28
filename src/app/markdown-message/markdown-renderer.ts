@@ -3,6 +3,8 @@ import { Marked } from 'marked';
 const GUID_BODY = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
 const PLACEHOLDER_GLOBAL = new RegExp(`\\{${GUID_BODY}\\}`);
 const PLACEHOLDER_ANCHOR = new RegExp(`^\\{(${GUID_BODY})\\}`);
+// Matches an incomplete {guid token at the end of the string (streaming in progress).
+const PARTIAL_PLACEHOLDER = /\{[0-9a-fA-F-]*$/;
 
 interface PlaceholderToken {
   type: 'componentPlaceholder';
@@ -36,6 +38,11 @@ marked.use({
     },
   ],
 });
+
+export function splitAtPartial(content: string): { stable: string; hasPartial: boolean } {
+  const stable = content.replace(PARTIAL_PLACEHOLDER, '');
+  return { stable, hasPartial: stable.length !== content.length };
+}
 
 export function renderMarkdown(content: string): string {
   return marked.parse(content) as string;

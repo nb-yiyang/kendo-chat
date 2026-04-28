@@ -43,6 +43,7 @@
 import {
   ApplicationRef,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ComponentRef,
   ElementRef,
@@ -51,6 +52,7 @@ import {
   Injector,
   Input,
   OnChanges,
+  type EffectRef,
   type Type,
   OnDestroy,
   Output,
@@ -59,49 +61,103 @@ import {
   ViewChild,
   afterNextRender,
   createComponent,
+  effect,
   inject,
+  ViewEncapsulation,
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import type { Subscription } from 'rxjs';
-import { renderMarkdown } from './markdown-renderer';
-import type { ComponentEvent, Guid, MarkdownMessage } from './types';
+import { renderMarkdown, splitAtPartial } from './markdown-renderer';
+import type { ComponentEvent, Guid, LiveMarkdownMessage } from './types';
 
 @Component({
   selector: 'app-message-renderer',
   standalone: true,
   template: `<div #host class="md" [innerHTML]="safeHtml"></div>`,
-  styles: [`
-    :host { display: block; }
-    .md { line-height: 1.5; color: #0f172a; }
-    .md > :first-child { margin-top: 0; }
-    .md > :last-child { margin-bottom: 0; }
-    .md h1, .md h2, .md h3, .md h4 { margin: 12px 0 6px; line-height: 1.25; }
-    .md h1 { font-size: 1.4em; }
-    .md h2 { font-size: 1.25em; }
-    .md h3 { font-size: 1.1em; }
-    .md p { margin: 6px 0; }
-    .md ul, .md ol { padding-left: 1.4em; margin: 6px 0; }
-    .md li { margin: 2px 0; }
-    .md blockquote {
-      border-left: 3px solid #cbd5e1;
-      margin: 8px 0;
-      padding: 2px 12px;
-      color: #475569;
-      background: #f8fafc;
-    }
-    .md code:not(pre code) {
-      background: #f1f5f9;
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-family: ui-monospace, SFMono-Regular, monospace;
-      font-size: 0.9em;
-    }
-    .md .cmp-host { display: contents; }
-  `],
+  styles: [
+    `
+      :host {
+        display: block;
+      }
+      .md {
+        line-height: 1.5;
+        color: #0f172a;
+      }
+      .md > :first-child {
+        margin-top: 0;
+      }
+      .md > :last-child {
+        margin-bottom: 0;
+      }
+      .md h1,
+      .md h2,
+      .md h3,
+      .md h4 {
+        margin: 12px 0 6px;
+        line-height: 1.25;
+      }
+      .md h1 {
+        font-size: 1.4em;
+      }
+      .md h2 {
+        font-size: 1.25em;
+      }
+      .md h3 {
+        font-size: 1.1em;
+      }
+      .md p {
+        margin: 6px 0;
+      }
+      .md ul,
+      .md ol {
+        padding-left: 1.4em;
+        margin: 6px 0;
+      }
+      .md li {
+        margin: 2px 0;
+      }
+      .md blockquote {
+        border-left: 3px solid #cbd5e1;
+        margin: 8px 0;
+        padding: 2px 12px;
+        color: #475569;
+        background: #f8fafc;
+      }
+      .md code:not(pre code) {
+        background: #f1f5f9;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 0.9em;
+      }
+      .md .cmp-host {
+        display: contents;
+      }
+      .cmp-mask {
+        display: inline-block;
+        vertical-align: middle;
+        width: 72px;
+        height: 0.875em;
+        border-radius: 999px;
+        background: #e2e8f0;
+        animation: cmp-pulse 500ms ease-in-out infinite;
+      }
+      @keyframes cmp-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+    `,
+  ],
+  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MessageRendererComponent implements OnChanges, OnDestroy {
-  @Input({ required: true }) message!: MarkdownMessage;
+  @Input({ required: true }) message!: LiveMarkdownMessage;
   @Output() componentEvent = new EventEmitter<ComponentEvent>();
 
   @ViewChild('host', { static: true }) hostRef!: ElementRef<HTMLElement>;
@@ -110,23 +166,81 @@ export class MessageRendererComponent implements OnChanges, OnDestroy {
   private readonly envInjector = inject(EnvironmentInjector);
   private readonly injector = inject(Injector);
   private readonly appRef = inject(ApplicationRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input({ required: true }) components!: Record<string, Type<unknown>>;
 
   protected safeHtml: string | null = null;
   private mounted: ComponentRef<unknown>[] = [];
   private subs: Subscription[] = [];
+  private lastStableContent: string | null = null;
+  private maskEl: HTMLSpanElement | null = null;
+  private liveContentEffect: EffectRef | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['message']) return;
-    this.destroyMounted();
-    const html = renderMarkdown(this.message.content);
-    this.safeHtml = this.sanitizer.sanitize(SecurityContext.HTML, html);
-    afterNextRender(() => this.mountComponents(), { injector: this.injector });
+
+    // Tear down any previous liveContent watcher.
+    this.liveContentEffect?.destroy();
+    this.liveContentEffect = null;
+
+    if (this.message.liveContent) {
+      // Typing mode: watch the signal directly so the messages array (and Kendo's
+      // rendering) stays untouched on each tick — the component is never recreated.
+      this.liveContentEffect = effect(() => this.handleContentChange(this.message.liveContent!()), {
+        injector: this.injector,
+      });
+    } else {
+      // Static mode: render once from the stable content string.
+      this.handleContentChange(this.message.content);
+    }
   }
 
   ngOnDestroy(): void {
     this.destroyMounted();
+    this.removeMask();
+    this.liveContentEffect?.destroy();
+  }
+
+  private handleContentChange(content: string): void {
+    const { stable, hasPartial } = splitAtPartial(content);
+
+    if (stable !== this.lastStableContent) {
+      // Stable content changed — full re-render and remount.
+      this.lastStableContent = stable;
+      this.destroyMounted();
+      this.removeMask();
+      const html = renderMarkdown(stable);
+      this.safeHtml = this.sanitizer.sanitize(SecurityContext.HTML, html);
+      this.cdr.markForCheck();
+      afterNextRender(
+        () => {
+          this.mountComponents();
+          if (hasPartial) this.showMask();
+        },
+        { injector: this.injector },
+      );
+    } else {
+      // Only the trailing partial guid changed — skip re-render, just toggle the mask.
+      if (hasPartial) this.showMask();
+      else this.removeMask();
+    }
+  }
+
+  private showMask(): void {
+    if (this.maskEl?.isConnected) return;
+    const host = this.hostRef?.nativeElement;
+    if (!host) return;
+    if (!this.maskEl) {
+      this.maskEl = document.createElement('span');
+      this.maskEl.className = 'cmp-mask';
+    }
+    (host.lastElementChild ?? host).appendChild(this.maskEl);
+  }
+
+  private removeMask(): void {
+    this.maskEl?.remove();
+    this.maskEl = null;
   }
 
   private mountComponents(): void {
@@ -178,7 +292,12 @@ export class MessageRendererComponent implements OnChanges, OnDestroy {
         const prop = (ref.instance as Record<string, unknown>)[propName];
         if (prop instanceof EventEmitter) {
           const sub = (prop as EventEmitter<unknown>).subscribe((outputData) =>
-            this.componentEvent.emit({ guid, componentType: meta.type, outputName: propName, outputData }),
+            this.componentEvent.emit({
+              guid,
+              componentType: meta.type,
+              outputName: propName,
+              outputData,
+            }),
           );
           this.subs.push(sub);
         }

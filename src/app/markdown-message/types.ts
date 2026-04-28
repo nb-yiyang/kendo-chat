@@ -10,6 +10,11 @@ export type MarkdownMessage = {
   metadata: Record<Guid, ComponentMetadata>;
 };
 
+// Internal to this folder — not re-exported from index.ts.
+// Used by the typing service (producer) and renderer (consumer) only.
+import type { Signal } from '@angular/core';
+export type LiveMarkdownMessage = MarkdownMessage & { liveContent?: Signal<string> };
+
 /**
  * Emitted by `MessageRendererComponent` whenever a dynamically mounted component fires an output.
  * Use `componentType` + `outputName` to route the event, and `guid` to identify the specific instance.
