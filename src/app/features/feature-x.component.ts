@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ChatModule, type Message, type User } from '@progress/kendo-angular-conversational-ui';
 import {
   MessageRendererComponent,
-  provideMarkdownComponents,
   type ComponentEvent,
   type MarkdownMessage,
 } from '../markdown-message';
@@ -18,14 +17,6 @@ type ChatMessage = Message & { _md: MarkdownMessage };
   selector: 'app-feature-x',
   standalone: true,
   imports: [ChatModule, MessageRendererComponent],
-  providers: [
-    provideMarkdownComponents({
-      RevenueChartComponent,
-      CodeBlockComponent,
-      ProductCardComponent,
-      TaskCardComponent,
-    }),
-  ],
   template: `
     <section class="feature">
       <header class="feature__head">
@@ -42,6 +33,7 @@ type ChatMessage = Message & { _md: MarkdownMessage };
         <ng-template kendoChatMessageTemplate let-message>
           <app-message-renderer
             [message]="message._md"
+            [components]="components"
             (componentEvent)="onComponentEvent($event)"
           />
         </ng-template>
@@ -75,6 +67,8 @@ type ChatMessage = Message & { _md: MarkdownMessage };
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FeatureXComponent {
+  protected readonly components = { RevenueChartComponent, CodeBlockComponent, ProductCardComponent, TaskCardComponent };
+
   protected readonly user: User = { id: 1, name: 'You' };
   protected readonly bot: User = { id: 2, name: 'X-Assistant' };
 

@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ChatModule, type Message, type User } from '@progress/kendo-angular-conversational-ui';
 import {
   MessageRendererComponent,
-  provideMarkdownComponents,
+  MessageTypingService,
   type ComponentEvent,
   type MarkdownMessage,
 } from '../markdown-message';
@@ -15,11 +15,6 @@ type ChatMessage = Message & { _md: MarkdownMessage };
   selector: 'app-feature-y',
   standalone: true,
   imports: [ChatModule, MessageRendererComponent],
-  providers: [
-    provideMarkdownComponents({
-      TaskCardComponent,
-    }),
-  ],
   template: `
     <section class="feature">
       <header class="feature__head">
@@ -36,6 +31,7 @@ type ChatMessage = Message & { _md: MarkdownMessage };
         <ng-template kendoChatMessageTemplate let-message>
           <app-message-renderer
             [message]="message._md"
+            [components]="components"
             (componentEvent)="onComponentEvent($event)"
           />
         </ng-template>
@@ -77,6 +73,8 @@ type ChatMessage = Message & { _md: MarkdownMessage };
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FeatureYComponent {
+  protected readonly components = { TaskCardComponent };
+
   protected readonly user: User = { id: 1, name: 'You' };
   protected readonly bot: User = { id: 2, name: 'Y-Assistant' };
 
@@ -90,18 +88,22 @@ export class FeatureYComponent {
     }))
   );
 
+  private readonly typing = inject(MessageTypingService);
+
   protected loadNextMessage(): void {
-    const m = MOCK_FEATURE_Y_EXTRA_MESSAGE;
-    this.messages.update(current => [
-      ...current,
+    const { content, metadata } = MOCK_FEATURE_Y_EXTRA_MESSAGE;
+    const current = this.messages();
+    this.typing.enqueue(
+      this.messages,
       {
         id: `y-${current.length}`,
         author: this.bot,
-        text: m.content,
+        text: content,
         timestamp: new Date(),
-        _md: m,
+        _md: { content: '', metadata },
       },
-    ]);
+      content,
+    );
   }
 
   protected onComponentEvent(e: ComponentEvent): void {
