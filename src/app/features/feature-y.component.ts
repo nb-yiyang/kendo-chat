@@ -1,5 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { ChatModule, type Message, type User } from '@progress/kendo-angular-conversational-ui';
+import {
+  ChatModule,
+  type Message,
+  type SendMessageEvent,
+  type User,
+} from '@progress/kendo-angular-conversational-ui';
 import {
   MessageRendererComponent,
   MessageTypingService,
@@ -27,8 +32,17 @@ type ChatMessage = Message & { _md: MarkdownMessage };
         [authorId]="user.id"
         [height]="640"
         [width]="'100%'"
+        [receiverMessageSettings]="{ showUsername: false }"
+        [authorMessageSettings]="{ showAvatar: true }"
+        (sendMessage)="onSendMessage($event)"
       >
-        <ng-template kendoChatMessageTemplate let-message>
+        <ng-template kendoChatTimestampTemplate let-timestamp>
+          <span class="my-timestamp">{{ timestamp }}</span>
+        </ng-template>
+        <ng-template kendoChatAuthorMessageTemplate let-message>
+          <div class="user-bubble">{{ message.text }}</div>
+        </ng-template>
+        <ng-template kendoChatReceiverMessageTemplate let-message>
           <app-message-renderer
             [message]="message._md"
             [components]="components"
@@ -36,9 +50,7 @@ type ChatMessage = Message & { _md: MarkdownMessage };
           />
         </ng-template>
       </kendo-chat>
-      <button class="feature__load-btn" (click)="loadNextMessage()">
-        Simulate server push
-      </button>
+      <button class="feature__load-btn" (click)="loadNextMessage()">Simulate server push</button>
     </section>
   `,
   styles: [
@@ -68,6 +80,13 @@ type ChatMessage = Message & { _md: MarkdownMessage };
         font-size: 12px;
         cursor: pointer;
       }
+      .user-bubble {
+        background: #3b82f6;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 16px 16px 4px 16px;
+        word-break: break-word;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -80,30 +99,35 @@ export class FeatureYComponent {
 
   protected readonly messages = signal<ChatMessage[]>(
     MOCK_FEATURE_Y_MESSAGES.map((m, i) => ({
-      id: `y-${i}`,
+      id: crypto.randomUUID(),
       author: this.bot,
       text: m.content,
       timestamp: new Date(Date.now() - (MOCK_FEATURE_Y_MESSAGES.length - i) * 60_000),
       _md: m,
-    }))
+    })),
   );
 
   private readonly typing = inject(MessageTypingService);
 
   protected loadNextMessage(): void {
     const { content, metadata } = MOCK_FEATURE_Y_EXTRA_MESSAGE;
-    const current = this.messages();
-    this.typing.enqueue(
-      this.messages,
+    this.typing.enqueue(this.messages, {
+      id: crypto.randomUUID(),
+      author: this.bot,
+      text: content,
+      timestamp: new Date(),
+      _md: { content, metadata },
+    });
+  }
+
+  protected onSendMessage(e: SendMessageEvent): void {
+    this.messages.update((msgs) => [
+      ...msgs,
       {
-        id: `y-${current.length}`,
-        author: this.bot,
-        text: content,
-        timestamp: new Date(),
-        _md: { content: '', metadata },
+        ...e.message,
+        _md: { content: e.message.text ?? '', metadata: {} },
       },
-      content,
-    );
+    ]);
   }
 
   protected onComponentEvent(e: ComponentEvent): void {

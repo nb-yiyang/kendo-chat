@@ -30,7 +30,7 @@ type ChatMessage = Message & { _md: MarkdownMessage };
         [height]="640"
         [width]="'100%'"
       >
-        <ng-template kendoChatMessageTemplate let-message>
+        <ng-template kendoChatMessageContentTemplate let-message>
           <app-message-renderer
             [message]="message._md"
             [components]="components"
@@ -67,13 +67,18 @@ type ChatMessage = Message & { _md: MarkdownMessage };
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FeatureXComponent {
-  protected readonly components = { RevenueChartComponent, CodeBlockComponent, ProductCardComponent, TaskCardComponent };
+  protected readonly components = {
+    RevenueChartComponent,
+    CodeBlockComponent,
+    ProductCardComponent,
+    TaskCardComponent,
+  };
 
   protected readonly user: User = { id: 1, name: 'You' };
   protected readonly bot: User = { id: 2, name: 'X-Assistant' };
 
   protected readonly messages: ChatMessage[] = MOCK_FEATURE_X_MESSAGES.map((m, i) => ({
-    id: `x-${i}`,
+    id: crypto.randomUUID(),
     author: this.bot,
     text: m.content,
     timestamp: new Date(Date.now() - (MOCK_FEATURE_X_MESSAGES.length - i) * 60_000),
