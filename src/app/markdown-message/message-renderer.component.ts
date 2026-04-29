@@ -140,7 +140,7 @@ import type { ComponentEvent, Guid, LiveMarkdownMessage } from './types';
         height: 0.875em;
         border-radius: 999px;
         background: #e2e8f0;
-        animation: cmp-pulse 500ms ease-in-out infinite;
+        animation: cmp-pulse 1s ease-in-out infinite;
       }
       @keyframes cmp-pulse {
         0%,
@@ -205,7 +205,11 @@ export class MessageRendererComponent implements OnChanges, OnDestroy {
   private handleContentChange(content: string): void {
     const { stable, hasPartial } = splitAtPartial(content);
 
-    if (stable !== this.lastStableContent) {
+    if (stable === this.lastStableContent) {
+      // Only the trailing partial guid changed — skip re-render, just toggle the mask.
+      if (hasPartial) this.showMask();
+      else this.removeMask();
+    } else {
       // Stable content changed — full re-render and remount.
       this.lastStableContent = stable;
       this.destroyMounted();
@@ -220,10 +224,6 @@ export class MessageRendererComponent implements OnChanges, OnDestroy {
         },
         { injector: this.injector },
       );
-    } else {
-      // Only the trailing partial guid changed — skip re-render, just toggle the mask.
-      if (hasPartial) this.showMask();
-      else this.removeMask();
     }
   }
 

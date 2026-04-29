@@ -1,6 +1,6 @@
 // Simulated typing flow
 //
-//  caller: enqueue(messages, message, fullContent)
+//  caller: enqueue(messages, message)  — fullContent read from message._md.content
 //         │
 //         ├─ 1. append message once to the array with liveContent = signal('')
 //         │      └─ Kendo renders the new message row (once, never again during typing)
@@ -38,17 +38,19 @@ export class MessageTypingService {
   enqueue<T extends WithMd>(
     messages: WritableSignal<T[]>,
     message: T,
-    fullContent: string,
     intervalMs = 30,
   ): void {
     this.flush();
 
+    const fullContent = message._md.content;
+
     // Embed a liveContent signal in _md so the renderer reacts to each character
     // without the messages array changing — prevents Kendo from recreating the component.
+    // Clear content so the full text isn't flashed before the animation starts.
     const liveContent = signal('');
     messages.update(current => [...current, {
       ...message,
-      _md: { ...message._md, liveContent },
+      _md: { ...message._md, content: '', liveContent },
     } as T]);
 
     let charIndex = 0;
